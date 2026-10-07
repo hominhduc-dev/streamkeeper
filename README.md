@@ -52,3 +52,5 @@ pnpm tauri build
 ```
 
 Bộ cài sinh tại `target/release/bundle/nsis/`. Các test pipeline tạo video mẫu bằng FFmpeg và server HTTP cục bộ, không tải phim. Xem [kiến trúc](docs/ARCHITECTURE.md), [kết quả kiểm thử](docs/VALIDATION.md), [SRS](docs/SRS.md) và [thành phần bên thứ ba](docs/licenses/THIRD-PARTY.md).
+
+Benchmark RAM/network và soak test VOD dài: xem [docs/soak-tests.md](docs/soak-tests.md).
