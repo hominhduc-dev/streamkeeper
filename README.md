@@ -1,6 +1,6 @@
 # Streamkeeper
 
-Ứng dụng Windows tải HLS VOD thành MP4/MKV, giữ session trong quá trình tải, ghép phụ đề và quản lý thư viện phim. Giao diện tiếng Việt. Phiên bản 0.3.0.
+Ứng dụng Windows tải HLS VOD thành MP4/MKV, giữ session trong quá trình tải, ghép phụ đề và quản lý thư viện phim. Giao diện tiếng Việt. Phiên bản 0.3.1.
 
 [Tải bộ cài từ GitHub Releases](https://github.com/hominhduc-dev/streamkeeper/releases/latest).
 

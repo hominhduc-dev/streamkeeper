@@ -260,7 +260,7 @@ export default function App() {
             <p>Video và phiên tải được xử lý local.</p>
           </div>
           <span className="version">
-            Streamkeeper <span>v0.3.0</span>
+            Streamkeeper <span>v0.3.1</span>
           </span>
         </div>
       </aside>

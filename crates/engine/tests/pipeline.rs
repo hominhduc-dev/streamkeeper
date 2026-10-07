@@ -456,3 +456,38 @@ fn legacy_settings_default_to_preventing_sleep() {
     let settings:video_domain::Settings=serde_json::from_str(r#"{"outputDir":"C:/Videos","cacheDir":"C:/Cache","concurrency":8,"keepCache":false,"theme":"dark"}"#).unwrap();
     assert!(settings.prevent_sleep);
 }
+
+#[tokio::test]
+async fn mux_recovers_duplicate_dts_and_validates_output() {
+    let directory = tempfile::tempdir().unwrap();
+    fixtures(directory.path()).await;
+    let output = directory.path().join("corrected.mp4");
+    let args: Vec<String> = ["-v", "error", "-xerror", "-nostdin", "-n", "-i"]
+        .map(str::to_string)
+        .into_iter()
+        .chain([
+            directory
+                .path()
+                .join("media.m3u8")
+                .to_string_lossy()
+                .into_owned(),
+            "-c".into(),
+            "copy".into(),
+            "-bsf:v".into(),
+            "setts=dts='if(eq(N,10),PREV_OUTDTS,DTS)'".into(),
+            output.to_string_lossy().into_owned(),
+        ])
+        .collect();
+    let cancel = CancellationToken::new();
+    let failure = ffmpeg::execute(&tools().ffmpeg, &args, &cancel)
+        .await
+        .unwrap_err();
+    assert!(failure.to_string().contains("Non-monotonic DTS"));
+    tokio::fs::remove_file(&output).await.unwrap();
+    ffmpeg::mux(&tools().ffmpeg, &args, &output, &cancel)
+        .await
+        .unwrap();
+    ffmpeg::validate(&tools(), &output, 12., &cancel)
+        .await
+        .unwrap();
+}

@@ -694,7 +694,7 @@ impl Engine {
             args.extend(["-movflags".into(), "+faststart".into()]);
         }
         args.push(temp.to_string_lossy().into());
-        ffmpeg::execute(&self.tools.ffmpeg, &args, cancel).await?;
+        ffmpeg::mux(&self.tools.ffmpeg, &args, &temp, cancel).await?;
         ensure!(!cancel.is_cancelled(), "CANCELLED");
         self.update(id, |j| {
             if j.state == "muxing" {

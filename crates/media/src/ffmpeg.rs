@@ -36,6 +36,36 @@ pub async fn execute(
     );
     Ok(result.stdout)
 }
+/// Retry timestamp errors using FFmpeg's muxer correction, then let the caller
+/// validate the complete output before publishing it.
+pub async fn mux(
+    binary: &Path,
+    args: &[String],
+    output: &Path,
+    cancel: &CancellationToken,
+) -> Result<()> {
+    match execute(binary, args, cancel).await {
+        Ok(_) => Ok(()),
+        Err(error) => {
+            let message = error.to_string();
+            if cancel.is_cancelled()
+                || !(message.contains("Non-monotonic DTS")
+                    || message.contains("Non-monotonous DTS"))
+            {
+                return Err(error);
+            }
+            tokio::fs::remove_file(output).await?;
+            let corrected: Vec<String> = args
+                .iter()
+                .filter(|arg| arg.as_str() != "-xerror")
+                .cloned()
+                .collect();
+            execute(binary, &corrected, cancel).await?;
+            Ok(())
+        }
+    }
+}
+
 pub async fn probe(
     tools: &Tools,
     file: &Path,
