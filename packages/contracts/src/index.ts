@@ -63,3 +63,13 @@ export type RuntimeStatus = {
   ffmpegVersion: string;
   dataDir: string;
 };
+export type Movie = {
+  id: string;
+  title: string;
+  output: string;
+  format: string;
+  duration: number;
+  addedAt: number;
+  watched: boolean;
+  missing: boolean;
+};

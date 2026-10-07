@@ -14,6 +14,8 @@
 
 Không cần server hoặc SSR. Mọi xử lý diễn ra trên máy người dùng.
 
+Từ 0.2.0: module `crates/engine/src/library.rs` và màn hình Library quản lý job completed như phim. Migration 0002 lưu watched/deleted; poster JPEG local được tạo bởi FFmpeg và trả về dưới dạng data URI. SQLite dùng một connection để tuần tự hóa ghi checkpoint. Xem LIBRARY.md.
+
 ## Cấu trúc
 
 ```text

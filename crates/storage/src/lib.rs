@@ -10,6 +10,19 @@ pub struct Storage {
     pool: SqlitePool,
 }
 impl Storage {
+    pub async fn movie_flags(&self, id: &str) -> Result<(bool, bool)> {
+        let row = sqlx::query("SELECT watched,deleted FROM movie_library WHERE job_id=?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(row
+            .map(|r| (r.get::<bool, _>("watched"), r.get::<bool, _>("deleted")))
+            .unwrap_or_default())
+    }
+    pub async fn set_movie_flags(&self, id: &str, watched: bool, deleted: bool) -> Result<()> {
+        sqlx::query("INSERT INTO movie_library VALUES(?,?,?) ON CONFLICT(job_id) DO UPDATE SET watched=excluded.watched,deleted=excluded.deleted").bind(id).bind(watched).bind(deleted).execute(&self.pool).await?;
+        Ok(())
+    }
     pub async fn open(path: &Path) -> Result<Self> {
         let opts = SqliteConnectOptions::new()
             .filename(path)
@@ -18,7 +31,8 @@ impl Storage {
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
             .busy_timeout(std::time::Duration::from_secs(10));
         let pool = SqlitePoolOptions::new()
-            .max_connections(4)
+            // SQLite has one writer; serialize checkpoints instead of competing writer connections.
+            .max_connections(1)
             .connect_with(opts)
             .await?;
         sqlx::migrate!().run(&pool).await?;

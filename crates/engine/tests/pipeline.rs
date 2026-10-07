@@ -293,6 +293,19 @@ async fn downloads_cookie_protected_hls_and_subtitles_with_retry() {
         .unwrap()
         .iter()
         .any(|s| s["codec_type"] == "subtitle" && s["tags"]["language"] == "vie"));
+    assert_eq!(engine.movies().await.unwrap().len(), 1);
+    assert!(engine
+        .movie_poster(&job.id)
+        .await
+        .unwrap()
+        .starts_with("data:image/jpeg;base64,/9j/"));
+    engine.mark_watched(&job.id, true).await.unwrap();
+    assert!(engine.rename_movie(&job.id, "../bad").await.is_err());
+    let protected = PathBuf::from(job.output.as_ref().unwrap()).with_file_name("existing.mp4");
+    tokio::fs::write(&protected, b"preserve").await.unwrap();
+    assert!(engine.rename_movie(&job.id, "existing").await.is_err());
+    engine.rename_movie(&job.id, "Tên phim mới").await.unwrap();
+    assert!(!Path::new(job.output.as_ref().unwrap()).exists());
     engine.shutdown().await.unwrap();
     drop(engine);
     let reopened = Engine::open(
@@ -303,6 +316,14 @@ async fn downloads_cookie_protected_hls_and_subtitles_with_retry() {
     .await
     .unwrap();
     assert_eq!(reopened.list().await[0].state, "completed");
+    let movie = reopened.movies().await.unwrap().remove(0);
+    assert!(movie.watched);
+    assert_eq!(movie.title, "Tên phim mới");
+    assert!(!movie.missing);
+    reopened.delete_movie(&movie.id).await.unwrap();
+    assert!(!Path::new(&movie.output).exists());
+    assert!(reopened.movies().await.unwrap().is_empty());
+    assert_eq!(tokio::fs::read(protected).await.unwrap(), b"preserve");
     reopened.shutdown().await.unwrap();
     server.abort();
 }

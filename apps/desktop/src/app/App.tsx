@@ -9,6 +9,7 @@ import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import Library from "./Library";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   ArrowDownToLine,
@@ -242,6 +243,10 @@ export default function App() {
             <History size={18} />
             Lịch sử<span className="nav-count">{history.length}</span>
           </NavLink>
+          <NavLink to="/library">
+            <Film size={18} />
+            Thư viện phim
+          </NavLink>
           <NavLink to="/settings">
             <Settings2 size={18} />
             Cài đặt
@@ -254,7 +259,7 @@ export default function App() {
             <p>Video và phiên tải được xử lý local.</p>
           </div>
           <span className="version">
-            Streamkeeper <span>v0.1.0</span>
+            Streamkeeper <span>v0.2.0</span>
           </span>
         </div>
       </aside>
@@ -263,11 +268,13 @@ export default function App() {
           <span>
             Không gian làm việc <ChevronRight size={13} />
             <b>
-              {location.pathname === "/history"
-                ? "Lịch sử"
-                : location.pathname === "/settings"
-                  ? "Cài đặt"
-                  : "Downloads"}
+              {location.pathname === "/library"
+                ? "Thư viện phim"
+                : location.pathname === "/history"
+                  ? "Lịch sử"
+                  : location.pathname === "/settings"
+                    ? "Cài đặt"
+                    : "Downloads"}
             </b>
           </span>
           <div>
@@ -444,6 +451,7 @@ export default function App() {
               </>
             }
           />
+          <Route path="/library" element={<Library />} />
           <Route
             path="/settings"
             element={

@@ -1,4 +1,5 @@
 use anyhow::{ensure, Context, Result};
+mod library;
 use futures_util::{stream, StreamExt};
 use sha2::{Digest, Sha256};
 use std::{
@@ -21,6 +22,7 @@ use video_providers::Session;
 use video_storage::Storage;
 
 pub struct Engine {
+    library_lock: Mutex<()>,
     pub data_dir: PathBuf,
     pub tools: Tools,
     pub storage: Storage,
@@ -65,6 +67,7 @@ impl Engine {
         }
         let (events, _) = broadcast::channel(128);
         let engine = Arc::new(Self {
+            library_lock: Mutex::new(()),
             data_dir,
             tools,
             storage,
@@ -238,10 +241,14 @@ impl Engine {
     async fn update(&self, id: &str, f: impl FnOnce(&mut Job)) -> Result<()> {
         let mut jobs = self.jobs.write().await;
         let job = jobs.get_mut(id).context("Không tìm thấy job")?;
+        let previous = job.clone();
         f(job);
         job.revision += 1.;
         job.updated_at = now();
-        self.storage.save(job).await?;
+        if let Err(error) = self.storage.save(job).await {
+            *job = previous;
+            return Err(error);
+        }
         let _ = self.events.send(job.clone());
         Ok(())
     }

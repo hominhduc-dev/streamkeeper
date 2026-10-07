@@ -159,7 +159,12 @@ fn main() {
             runtime_status,
             open_artifact,
             shutdown_app,
-            export_diagnostics
+            export_diagnostics,
+            list_movies,
+            mark_movie_watched,
+            rename_movie,
+            delete_movie,
+            movie_poster
         ])
         .setup(|app| {
             let data = std::env::var_os("STREAMKEEPER_DATA_DIR")
@@ -193,4 +198,28 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("Không khởi chạy được Streamkeeper");
+}
+#[tauri::command]
+async fn list_movies(state: State<'_, AppEngine>) -> Result<Vec<Movie>, String> {
+    state.movies().await.map_err(message)
+}
+#[tauri::command]
+async fn mark_movie_watched(
+    state: State<'_, AppEngine>,
+    id: String,
+    watched: bool,
+) -> Result<(), String> {
+    state.mark_watched(&id, watched).await.map_err(message)
+}
+#[tauri::command]
+async fn rename_movie(state: State<'_, AppEngine>, id: String, name: String) -> Result<(), String> {
+    state.rename_movie(&id, &name).await.map_err(message)
+}
+#[tauri::command]
+async fn delete_movie(state: State<'_, AppEngine>, id: String) -> Result<(), String> {
+    state.delete_movie(&id).await.map_err(message)
+}
+#[tauri::command]
+async fn movie_poster(state: State<'_, AppEngine>, id: String) -> Result<String, String> {
+    state.movie_poster(&id).await.map_err(message)
 }

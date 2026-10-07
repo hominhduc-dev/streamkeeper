@@ -9,6 +9,7 @@ fn main() -> std::io::Result<()> {
         Job::decl(),
         Settings::decl(),
         RuntimeStatus::decl(),
+        Movie::decl(),
     ]
     .into_iter()
     .map(|s| format!("export {s}\n"))

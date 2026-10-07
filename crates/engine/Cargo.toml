@@ -13,6 +13,7 @@ sha2.workspace = true
 url.workspace = true
 tracing.workspace = true
 fs2 = "0.4"
+base64 = "0.22"
 video-domain.workspace = true
 video-storage.workspace = true
 video-media.workspace = true

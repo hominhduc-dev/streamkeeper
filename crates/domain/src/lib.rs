@@ -1,5 +1,17 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct Movie {
+    pub id: String,
+    pub title: String,
+    pub output: String,
+    pub format: String,
+    pub duration: f64,
+    pub added_at: f64,
+    pub watched: bool,
+    pub missing: bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
