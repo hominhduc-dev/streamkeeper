@@ -1,0 +1,9 @@
+node_modules/
+target/
+dist/
+*.log
+apps/desktop/src-tauri/binaries/*.exe
+*.tsbuildinfo
+releases/
+.local/
+apps/desktop/src-tauri/gen/

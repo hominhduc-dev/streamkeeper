@@ -1,0 +1,15 @@
+{
+  "name": "video-downloader-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "pnpm --filter @video/desktop dev",
+    "build": "pnpm --filter @video/desktop build",
+    "tauri": "pnpm --filter @video/desktop tauri",
+    "typecheck": "pnpm --filter @video/desktop typecheck",
+    "test": "pnpm --filter @video/desktop test",
+    "contracts": "cargo run -p video-domain --bin export-types -- packages/contracts/src/index.ts",
+    "contracts:check": "node scripts/check-contracts.mjs"
+  }
+}

@@ -1,0 +1,17 @@
+[package]
+name = "video-providers"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+anyhow.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+uuid.workspace = true
+video-domain.workspace = true
+video-media.workspace = true
+[dev-dependencies]
+axum = "0.8"
+futures-util.workspace = true

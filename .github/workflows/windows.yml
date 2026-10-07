@@ -1,0 +1,34 @@
+name: Windows checks and installer
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/prepare-tools.ps1
+        shell: pwsh
+      - run: pnpm typecheck
+      - run: pnpm contracts:check
+      - run: pnpm test
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test -p video-domain -p video-media -p video-providers -p video-storage -p video-engine
+      - run: pnpm tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Streamkeeper-windows-x64
+          path: target/release/bundle/nsis/*.exe

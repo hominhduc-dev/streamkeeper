@@ -1,0 +1,23 @@
+[workspace]
+members = ["crates/domain", "crates/storage", "crates/media", "crates/providers", "crates/engine", "apps/desktop/src-tauri"]
+resolver = "2"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "cookies", "json", "stream"] }
+anyhow = "1"
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+sha2 = "0.10"
+futures-util = "0.3"
+tokio-util = "0.7"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
+ts-rs = { version = "11", features = ["serde-compat"] }
+tracing = "0.1"
+video-domain = { path = "crates/domain" }
+video-storage = { path = "crates/storage" }
+video-media = { path = "crates/media" }
+video-providers = { path = "crates/providers" }
+video-engine = { path = "crates/engine" }
