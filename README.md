@@ -1,6 +1,6 @@
 # Streamkeeper
 
-Ứng dụng Windows tải HLS VOD thành MP4/MKV, giữ session trong quá trình tải, ghép phụ đề và quản lý thư viện phim. Giao diện tiếng Việt. Phiên bản 0.2.0.
+Ứng dụng Windows tải HLS VOD thành MP4/MKV, giữ session trong quá trình tải, ghép phụ đề và quản lý thư viện phim. Giao diện tiếng Việt. Phiên bản 0.3.0.
 
 [Tải bộ cài từ GitHub Releases](https://github.com/hominhduc-dev/streamkeeper/releases/latest).
 
@@ -16,6 +16,8 @@
 Mặc định file nằm ở `Downloads/Streamkeeper`, cache và SQLite ở `%LOCALAPPDATA%/dev.streamkeeper.desktop`. Không ghi đè file đã có. Thư mục đích cần NTFS để công bố file bằng hard link, và đủ dung lượng cho cả cache lẫn video. Một tác vụ chạy tại một thời điểm, tối đa 16 request segment đồng thời (mặc định 8).
 
 ## Phạm vi hiện tại
+
+**Chống sleep:** Cài đặt → “Giữ máy hoạt động khi đang tải” (mặc định bật). Windows power request giữ máy trong lúc downloading/muxing/verifying, màn hình vẫn được tự tắt. Pause, cancel, lỗi, hoàn tất, tắt tùy chọn hoặc thoát app sẽ giải phóng request. Cài đặt cũ tự nhận mặc định bật. Không thay đổi power plan. Không chặn Sleep thủ công hay đóng nắp; Modern Standby chạy pin có thể giới hạn request theo chính sách Windows. Chi tiết và kiểm thử trong [POWER.md](docs/POWER.md).
 
 **Thư viện phim:** video hoàn tất tự xuất hiện, kể cả các job của bản cũ. Poster tạo và cache từ khung hình video. Tìm tên không dấu, lọc đã xem/chưa xem/file bị thiếu và MP4/MKV. Trạng thái đã xem lưu qua restart. Đổi tên cập nhật tên phim và file video thật, chặn tên sai/trùng. Xóa cần xác nhận và xóa file video khỏi ổ đĩa, bỏ khỏi thư viện; phụ đề rời và lịch sử giữ lại. Nếu file bị di chuyển/xóa bên ngoài, thư viện báo file bị thiếu. Không tự quét/import các video ngoài lịch sử tải của ứng dụng.
 

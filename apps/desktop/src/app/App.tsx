@@ -135,6 +135,7 @@ export default function App() {
     queryKey: ["runtime"],
     queryFn: transport.runtime,
     enabled: native,
+    refetchInterval: 5000,
   });
   const jobs = jobsQ.data ?? [];
   const active = jobs.filter(
@@ -259,7 +260,7 @@ export default function App() {
             <p>Video và phiên tải được xử lý local.</p>
           </div>
           <span className="version">
-            Streamkeeper <span>v0.2.0</span>
+            Streamkeeper <span>v0.3.0</span>
           </span>
         </div>
       </aside>
@@ -1128,6 +1129,26 @@ function SettingsPage({
                 </small>
               </span>
             </label>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={draft.preventSleep}
+                onChange={(e) =>
+                  setDraft({ ...draft, preventSleep: e.target.checked })
+                }
+              />
+              <span>
+                Giữ máy hoạt động khi đang tải
+                <small>
+                  Áp dụng cả lúc ghép và kiểm tra video. Màn hình vẫn có thể tự
+                  tắt. Máy trở lại chế độ nguồn bình thường khi dừng tải.
+                </small>
+              </span>
+            </label>
+            {runtime?.sleepPrevented && (
+              <p>Đang gửi yêu cầu giữ máy hoạt động.</p>
+            )}
+            {runtime?.sleepError && <p role="alert">{runtime.sleepError}</p>}
             <div className="form-actions">
               <Button disabled={saving}>
                 {saving && <LoaderCircle className="spin" size={16} />}Lưu cài

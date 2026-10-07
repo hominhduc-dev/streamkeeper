@@ -1,6 +1,7 @@
 use anyhow::{ensure, Context, Result};
 mod library;
-use futures_util::{stream, StreamExt};
+mod power;
+use futures_util::StreamExt;
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
@@ -22,6 +23,7 @@ use video_providers::Session;
 use video_storage::Storage;
 
 pub struct Engine {
+    power: Mutex<power::SleepInhibitor>,
     library_lock: Mutex<()>,
     pub data_dir: PathBuf,
     pub tools: Tools,
@@ -45,6 +47,7 @@ impl Engine {
         tokio::fs::create_dir_all(&data_dir).await?;
         let storage = Storage::open(&data_dir.join("app.db")).await?;
         let settings = storage.settings().await?.unwrap_or(Settings {
+            prevent_sleep: true,
             output_dir: output_dir.to_string_lossy().into(),
             cache_dir: data_dir.join("jobs").to_string_lossy().into(),
             concurrency: 8,
@@ -67,6 +70,7 @@ impl Engine {
         }
         let (events, _) = broadcast::channel(128);
         let engine = Arc::new(Self {
+            power: Mutex::new(power::SleepInhibitor::default()),
             library_lock: Mutex::new(()),
             data_dir,
             tools,
@@ -109,6 +113,21 @@ impl Engine {
     pub async fn settings(&self) -> Settings {
         self.settings.read().await.clone()
     }
+    async fn refresh_power(&self) {
+        let mut power = self.power.lock().await;
+        let required = power::needs_awake(
+            self.settings.read().await.prevent_sleep,
+            self.closing.load(std::sync::atomic::Ordering::SeqCst),
+            self.jobs.read().await.values().map(|j| j.state.as_str()),
+        );
+        if let Err(error) = power.sync(required) {
+            power.error = Some(error.to_string());
+        }
+    }
+    pub async fn power_status(&self) -> (bool, Option<String>) {
+        let power = self.power.lock().await;
+        (power.active(), power.error.clone())
+    }
     pub async fn set_settings(&self, s: Settings) -> Result<()> {
         ensure!(
             (1..=16).contains(&s.concurrency),
@@ -139,6 +158,7 @@ impl Engine {
         tokio::fs::create_dir_all(&s.cache_dir).await?;
         self.storage.set_settings(&s).await?;
         *self.settings.write().await = s;
+        self.refresh_power().await;
         Ok(())
     }
     pub async fn create(&self, options: DownloadOptions) -> Result<Job> {
@@ -250,6 +270,8 @@ impl Engine {
             return Err(error);
         }
         let _ = self.events.send(job.clone());
+        drop(jobs);
+        self.refresh_power().await;
         Ok(())
     }
     pub async fn pause(&self, id: &str) -> Result<()> {
@@ -411,7 +433,7 @@ impl Engine {
             }
         }
     }
-    async fn run(&self, id: &str, cancel: &CancellationToken) -> Result<()> {
+    async fn run(self: &Arc<Self>, id: &str, cancel: &CancellationToken) -> Result<()> {
         let job = self.get(id).await?;
         if job.state != "queued" {
             return Ok(());
@@ -506,39 +528,60 @@ impl Engine {
         let mut bytes = 0u64;
         let mut transferred = 0u64;
         let mut last = Instant::now();
-        let mut tasks = stream::iter(all.into_iter().map(|segment| {
+        let mut pending = all.into_iter();
+        let mut tasks = tokio::task::JoinSet::new();
+        let spawn = |tasks: &mut tokio::task::JoinSet<Result<(u64, bool)>>, segment: Segment| {
+            let engine = self.clone();
+            let id = id.to_string();
+            let cancel = cancel.clone();
             let session = session.clone();
             let directory = segment_dir.clone();
-            async move {
-                self.download_segment(id, &session, &segment, &directory, cancel)
+            tasks.spawn(async move {
+                engine
+                    .download_segment(&id, &session, &segment, &directory, &cancel)
                     .await
-            }
-        }))
-        .buffer_unordered(settings.concurrency as usize);
-        while let Some(result) = tasks.next().await {
-            let (size, new) = result?;
-            done += 1;
-            bytes += size;
-            if new {
-                transferred += size;
-            }
-            if last.elapsed().as_millis() >= 250 {
-                let speed = transferred as f64 / began.elapsed().as_secs_f64().max(0.1);
-                self.update(id, |j| {
-                    if j.state == "downloading" {
-                        j.completed_segments = done as f64;
-                        j.downloaded_bytes = bytes as f64;
-                        j.speed = speed;
-                        j.eta = j
-                            .estimated_total_bytes
-                            .filter(|_| speed > 0.)
-                            .map(|total| (total - bytes as f64).max(0.) / speed);
-                    }
-                })
-                .await?;
-                last = Instant::now();
-            }
+            });
+        };
+        for segment in pending.by_ref().take(settings.concurrency as usize) {
+            spawn(&mut tasks, segment);
         }
+        // Independent tasks must keep polling SQLite checkpoints while progress persistence waits.
+        let download_result: Result<()> = async {
+            while let Some(result) = tasks.join_next().await {
+                let (size, new) = result??;
+                done += 1;
+                bytes += size;
+                if new {
+                    transferred += size;
+                }
+                if last.elapsed().as_millis() >= 250 {
+                    let speed = transferred as f64 / began.elapsed().as_secs_f64().max(0.1);
+                    self.update(id, |j| {
+                        if j.state == "downloading" {
+                            j.completed_segments = done as f64;
+                            j.downloaded_bytes = bytes as f64;
+                            j.speed = speed;
+                            j.eta = j
+                                .estimated_total_bytes
+                                .filter(|_| speed > 0.)
+                                .map(|total| (total - bytes as f64).max(0.) / speed);
+                        }
+                    })
+                    .await?;
+                    last = Instant::now();
+                }
+                if let Some(segment) = pending.next() {
+                    spawn(&mut tasks, segment);
+                }
+            }
+            Ok(())
+        }
+        .await;
+        if download_result.is_err() {
+            tasks.abort_all();
+            while tasks.join_next().await.is_some() {}
+        }
+        download_result?;
         drop(tasks);
         ensure!(!cancel.is_cancelled(), "CANCELLED");
         self.update(id, |j| {
@@ -709,6 +752,8 @@ impl Engine {
         final_job.updated_at = now();
         self.storage.save(final_job).await?;
         let _ = self.events.send(final_job.clone());
+        drop(jobs);
+        self.refresh_power().await;
         Ok(())
     }
     async fn download_segment(
@@ -787,6 +832,7 @@ impl Engine {
     pub async fn shutdown(&self) -> Result<()> {
         self.closing
             .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.refresh_power().await;
         self.notify.notify_one();
         let ids = self
             .jobs

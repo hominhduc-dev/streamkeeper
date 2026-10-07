@@ -81,6 +81,8 @@ pub struct Job {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default = "enabled_by_default")]
+    pub prevent_sleep: bool,
     pub output_dir: String,
     pub cache_dir: String,
     pub concurrency: u32,
@@ -90,10 +92,15 @@ pub struct Settings {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeStatus {
+    pub sleep_prevented: bool,
+    pub sleep_error: Option<String>,
     pub ffmpeg: bool,
     pub ffprobe: bool,
     pub ffmpeg_version: String,
     pub data_dir: String,
+}
+fn enabled_by_default() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -105,7 +105,8 @@ async fn server(root: PathBuf, counts: Arc<AtomicUsize>) -> (String, tokio::task
             }
             if filename.ends_with(".ts") {
                 let n = counts.fetch_add(1, Ordering::SeqCst);
-                tokio::time::sleep(Duration::from_millis(150)).await;
+                // Cross the progress coalescing interval while multiple checkpoint writes are pending.
+                tokio::time::sleep(Duration::from_millis(350)).await;
                 if n == 0 {
                     return Response::builder().status(503).body(Body::empty()).unwrap();
                 }
@@ -369,14 +370,25 @@ async fn pause_restart_resume_uses_checkpoints_and_keeps_output_safe() {
     })
     .await
     .unwrap();
+    assert!(engine.power_status().await.0);
+    let mut power_settings = engine.settings().await;
+    power_settings.prevent_sleep = false;
+    engine.set_settings(power_settings.clone()).await.unwrap();
+    assert!(!engine.power_status().await.0);
+    power_settings.prevent_sleep = true;
+    engine.set_settings(power_settings).await.unwrap();
+    assert!(engine.power_status().await.0);
     engine.pause(&job.id).await.unwrap();
+    assert!(!engine.power_status().await.0);
     engine.shutdown().await.unwrap();
+    assert!(!engine.power_status().await.0);
     assert!(!Path::new(job.output.as_ref().unwrap()).exists());
     drop(engine);
     let resumed = Engine::open(data, output, tools()).await.unwrap();
     assert_eq!(resumed.get(&job.id).await.unwrap().state, "paused");
     resumed.resume(&job.id).await.unwrap();
     await_state(&resumed, &job.id, &["completed"]).await;
+    assert!(!resumed.power_status().await.0);
     assert!(Path::new(job.output.as_ref().unwrap()).exists());
     assert!(counts.load(Ordering::SeqCst) <= 9);
     resumed.shutdown().await.unwrap();
@@ -437,4 +449,10 @@ fn error_redaction_removes_signed_urls() {
     let result = video_engine::redact("failed https://example.test/file?token=secret123 response");
     assert!(!result.contains("secret123"));
     assert!(!result.contains("example.test"));
+}
+
+#[test]
+fn legacy_settings_default_to_preventing_sleep() {
+    let settings:video_domain::Settings=serde_json::from_str(r#"{"outputDir":"C:/Videos","cacheDir":"C:/Cache","concurrency":8,"keepCache":false,"theme":"dark"}"#).unwrap();
+    assert!(settings.prevent_sleep);
 }

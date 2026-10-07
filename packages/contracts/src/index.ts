@@ -51,6 +51,7 @@ export type Job = {
   options: DownloadOptions;
 };
 export type Settings = {
+  preventSleep: boolean;
   outputDir: string;
   cacheDir: string;
   concurrency: number;
@@ -58,6 +59,8 @@ export type Settings = {
   theme: string;
 };
 export type RuntimeStatus = {
+  sleepPrevented: boolean;
+  sleepError: string | null;
   ffmpeg: boolean;
   ffprobe: boolean;
   ffmpegVersion: string;

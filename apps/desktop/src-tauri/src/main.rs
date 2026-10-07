@@ -61,9 +61,12 @@ async fn update_settings(state: State<'_, AppEngine>, settings: Settings) -> Res
 }
 #[tauri::command]
 async fn runtime_status(state: State<'_, AppEngine>) -> Result<RuntimeStatus, String> {
+    let (sleep_prevented, sleep_error) = state.power_status().await;
     let a = video_media::ffmpeg::version(&state.tools.ffmpeg).await;
     let b = video_media::ffmpeg::version(&state.tools.ffprobe).await;
     Ok(RuntimeStatus {
+        sleep_prevented,
+        sleep_error,
         ffmpeg: !a.is_empty(),
         ffprobe: !b.is_empty(),
         ffmpeg_version: a,

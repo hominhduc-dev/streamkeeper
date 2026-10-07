@@ -26,6 +26,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(async () => null) }));
 import App from "./App";
 const settings: Settings = {
+  preventSleep: true,
   outputDir: "C:\\Videos",
   cacheDir: "C:\\Cache",
   concurrency: 8,
@@ -171,10 +172,13 @@ describe("desktop user flows", () => {
     mount("/settings");
     const field = await screen.findByLabelText("Số request song song");
     fireEvent.change(field, { target: { value: "4" } });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Giữ máy hoạt động/ }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Lưu cài đặt" }));
     await waitFor(() =>
       expect(mocks.action).toHaveBeenCalledWith("update_settings", {
-        settings: { ...settings, concurrency: 4 },
+        settings: { ...settings, concurrency: 4, preventSleep: false },
       }),
     );
   });
